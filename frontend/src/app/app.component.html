@@ -1,0 +1,53 @@
+<div class="container">
+  <h2>EMI Calculator</h2>
+
+  <form (ngSubmit)="submit()" [formGroup]="emiForm" novalidate>
+    <div class="row">
+      <label for="loanValue">Loan Value</label><br />
+      <input id="loanValue" type="number" formControlName="loanValue" step="0.01" />
+      <div *ngIf="emiForm.controls.loanValue.touched && emiForm.controls.loanValue.invalid" class="field-error">
+        <div *ngIf="emiForm.controls.loanValue.errors?.['required']">Loan value is required</div>
+        <div *ngIf="emiForm.controls.loanValue.errors?.['min']">Loan value must be positive</div>
+      </div>
+    </div>
+
+    <div class="row">
+      <label for="yearlyInterestRate">Yearly Interest Rate (%)</label><br />
+      <input id="yearlyInterestRate" type="number" formControlName="yearlyInterestRate" step="0.01" />
+      <div *ngIf="emiForm.controls.yearlyInterestRate.touched && emiForm.controls.yearlyInterestRate.invalid" class="field-error">
+        <div *ngIf="emiForm.controls.yearlyInterestRate.errors?.['required']">Interest rate is required</div>
+        <div *ngIf="emiForm.controls.yearlyInterestRate.errors?.['min']">Must be ≥ 0</div>
+        <div *ngIf="emiForm.controls.yearlyInterestRate.errors?.['max']">Must be ≤ 100</div>
+      </div>
+    </div>
+
+    <div class="row">
+      <label for="loanTermYears">Loan Term (years)</label><br />
+      <input id="loanTermYears" type="number" formControlName="loanTermYears" step="0.01" />
+      <div *ngIf="emiForm.controls.loanTermYears.touched && emiForm.controls.loanTermYears.invalid" class="field-error">
+        <div *ngIf="emiForm.controls.loanTermYears.errors?.['required']">Loan term is required</div>
+        <div *ngIf="emiForm.controls.loanTermYears.errors?.['min']">Must be > 0</div>
+        <div *ngIf="emiForm.controls.loanTermYears.errors?.['max']">Must be ≤ 30 years</div>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="btn-primary" type="submit" [disabled]="loading">Calculate</button>
+      <button type="button" (click)="clear()" [disabled]="loading" style="margin-left:8px;">Clear</button>
+    </div>
+  </form>
+
+  <div *ngIf="loading" style="margin-top:12px;">Calculating...</div>
+
+  <div *ngIf="serverError" class="error">
+    Error: {{ serverError }}
+  </div>
+
+  <div *ngIf="result" class="result-card">
+    <h3>Result</h3>
+    <p><strong>Monthly EMI:</strong> <span style="float: right;">{{ result.emi | number:'1.2-2' }}</span></p>
+    <p><strong>Princiapl amount:</strong> <span style="float: right;">{{ emiForm.controls.loanValue.value }}</span></p>
+    <p><strong>Total Interest:</strong> <span style="float: right;">{{ result.totalInterest | number:'1.2-2' }}</span></p>
+    <p><strong>Total Payment:</strong> <span style="float: right;">{{ result.totalPayment | number:'1.2-2' }}</span></p>
+  </div>
+</div>

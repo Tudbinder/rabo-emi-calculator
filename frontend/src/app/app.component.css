@@ -1,0 +1,2 @@
+/* small component-level styles; main styles in styles.css */
+:host { display:block; }
