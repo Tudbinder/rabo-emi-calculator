@@ -11,14 +11,16 @@ import java.math.RoundingMode;
 @Service
 public class EmiService {
 
-    private static final MathContext MC = new MathContext(20, RoundingMode.HALF_UP);
+    private static final int MONTHS_IN_YEAR = 12;
+    private static final BigDecimal HUNDRED = new BigDecimal("100");
+    private static final MathContext CALC_CONTEXT = new MathContext(20, RoundingMode.HALF_UP);
+    private static final int CURRENCY_SCALE = 2;
 
     public EmiResponse calculateEmi(EmiRequest request){
         //validateRequest(request);
 
         return computeEmi(request);
     }
-
 
     private void validateRequest(EmiRequest req) {
         if (req.getLoanValue() == null || req.getYearlyInterestRate() == null || req.getLoanTermYears() == null) {
@@ -36,40 +38,66 @@ public class EmiService {
     }
 
     private EmiResponse computeEmi(EmiRequest req) {
+        EmiResponse response = new EmiResponse();
+        int termInMonths = (int) (req.getLoanTermYears() * MONTHS_IN_YEAR);
+        response.setTenureMonths(termInMonths);
+
+        // Convert loan value (P) to BigDecimal
         BigDecimal principal = BigDecimal.valueOf(req.getLoanValue());
-        BigDecimal yearlyRate = BigDecimal.valueOf(req.getYearlyInterestRate());
-        BigDecimal termYears = BigDecimal.valueOf(req.getLoanTermYears());
 
-        int tenureMonths = termYears.multiply(BigDecimal.valueOf(12)).intValue();
-        BigDecimal monthlyRate = yearlyRate
-                .divide(BigDecimal.valueOf(100), MC)
-                .divide(BigDecimal.valueOf(12), MC);
+        // Convert yearly rate (%) to monthly decimal rate (R)
+        // monthlyRateDecimal = (yearlyRate / 100) / 12
+        BigDecimal yearlyRateDecimal = BigDecimal.valueOf(req.getYearlyInterestRate()).divide(HUNDRED, CALC_CONTEXT);
+        BigDecimal monthlyRateDecimal = yearlyRateDecimal.divide(new BigDecimal(MONTHS_IN_YEAR), CALC_CONTEXT);
+        response.setMonthlyRate(monthlyRateDecimal.setScale(8, RoundingMode.HALF_UP));
 
-        BigDecimal emi;
+        // Handle edge case for zero/negative interest rate
+        if (monthlyRateDecimal.compareTo(BigDecimal.ZERO) <= 0) {
+            BigDecimal totalMonthsBD = new BigDecimal(termInMonths);
+            BigDecimal emiZeroRate = principal.divide(totalMonthsBD, CURRENCY_SCALE, RoundingMode.HALF_UP);
 
-        // If interest rate = 0%, EMI is simple division
-        if (monthlyRate.compareTo(BigDecimal.ZERO) == 0) {
-            emi = principal.divide(BigDecimal.valueOf(tenureMonths), 2, RoundingMode.HALF_UP);
-        } else {
-            // Standard EMI formula: P * r * (1+r)^N / ((1+r)^N - 1)
-            BigDecimal onePlusR = BigDecimal.ONE.add(monthlyRate);
-            BigDecimal pow = onePlusR.pow(tenureMonths, MC);
-
-            BigDecimal numerator = principal.multiply(monthlyRate).multiply(pow);
-            BigDecimal denominator = pow.subtract(BigDecimal.ONE);
-
-            emi = numerator.divide(denominator, 2, RoundingMode.HALF_UP);
+            response.setEmi(emiZeroRate);
+            response.setTotalPayment(principal.setScale(CURRENCY_SCALE, RoundingMode.HALF_UP));
+            response.setTotalInterest(BigDecimal.ZERO.setScale(CURRENCY_SCALE, RoundingMode.HALF_UP));
+            return response;
         }
 
-        BigDecimal totalPayment = emi.multiply(BigDecimal.valueOf(tenureMonths)).setScale(2, RoundingMode.HALF_UP);
-        BigDecimal totalInterest = totalPayment.subtract(principal).setScale(2, RoundingMode.HALF_UP);
+        // (1 + R)
+        BigDecimal onePlusR = BigDecimal.ONE.add(monthlyRateDecimal);
 
-        return new EmiResponse(
-                emi,
-                totalPayment,
-                totalInterest,
-                monthlyRate.setScale(6, RoundingMode.HALF_UP),
-                tenureMonths
-        );
+        // (1 + R)^N - Use a standard utility for power calculation
+        BigDecimal onePlusRPowerN = this.power(onePlusR, termInMonths);
+
+        // Numerator: P * R * (1+R)^N
+        BigDecimal numerator = principal
+                .multiply(monthlyRateDecimal, CALC_CONTEXT)
+                .multiply(onePlusRPowerN, CALC_CONTEXT);
+
+        // Denominator: (1+R)^N - 1
+        BigDecimal denominator = onePlusRPowerN.subtract(BigDecimal.ONE);
+
+        // Calculate final EMI, rounded to 2 decimal places (currency)
+        BigDecimal emiValue = numerator.divide(denominator, CURRENCY_SCALE, RoundingMode.HALF_UP);
+        response.setEmi(emiValue);
+
+        // Total Payment = EMI * N
+        BigDecimal totalMonthsBD = new BigDecimal(termInMonths);
+        BigDecimal totalPayment = emiValue.multiply(totalMonthsBD);
+        response.setTotalPayment(totalPayment.setScale(CURRENCY_SCALE, RoundingMode.HALF_UP));
+
+        // Total Interest = Total Payment - Principal
+        BigDecimal totalInterest = totalPayment.subtract(principal);
+        response.setTotalInterest(totalInterest.setScale(CURRENCY_SCALE, RoundingMode.HALF_UP));
+
+        return response;
+    }
+
+    private BigDecimal power(BigDecimal base, int exponent) {
+        BigDecimal result = BigDecimal.ONE;
+        for (int i = 0; i < exponent; i++) {
+            result = result.multiply(base, CALC_CONTEXT);
+        }
+        return result;
     }
 }
+
