@@ -1,8 +1,8 @@
 # EMI Calculator (Full-stack) — Backend (Spring Boot) + Frontend (Angular)
 
 This repository contains a small full-stack EMI calculator assignment demonstrating:
-- Java Spring Boot backend API to calculate EMI
-- Minimal Angular frontend to call the API and display results
+- Java Spring Boot backend API to calculate EMI.
+- Minimal Angular frontend to call the API and display results.
 
 ## Repo layout
 emi-calculator/
