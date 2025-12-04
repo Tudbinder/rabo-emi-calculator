@@ -1,6 +1,7 @@
 import { Component } from '@angular/core';
 import { FormBuilder, Validators } from '@angular/forms';
-import { EmiRequest, EmiService } from '../app/service/app.service';
+import { EmiRequest } from './model/emi-request.model';
+import { EmiService } from './service/app.service';
 
 
 @Component({
@@ -9,7 +10,7 @@ import { EmiRequest, EmiService } from '../app/service/app.service';
   styleUrls: ['./app.component.css']
 })
 export class AppComponent {
-  title = 'frontend';
+  title = 'Rabo EMI Calculator';
   result: any = null;
   loading = false;
   serverError: string | null = null;
@@ -29,8 +30,6 @@ export class AppComponent {
     return;
   }
 
-  // Build a strongly-typed request from the form values.
-  // The form validators guarantee these are present, so non-null assertions (!) are safe.
   const payload: EmiRequest = {
     loanValue: Number(this.emiForm.controls.loanValue.value!),
     yearlyInterestRate: Number(this.emiForm.controls.yearlyInterestRate.value!),
@@ -39,11 +38,11 @@ export class AppComponent {
 
   this.loading = true;
   this.emiService.calculate(payload).subscribe({
-    next: res => {
+    next: (res: any) => {
       this.result = res;
       this.loading = false;
     },
-    error: err => {
+    error: (err: any) => {
       this.loading = false;
       if (err?.error?.details) {
         const details = err.error.details;
@@ -51,7 +50,7 @@ export class AppComponent {
       } else if (err?.error?.message) {
         this.serverError = err.error.message;
       } else {
-        this.serverError = 'Unexpected server error';
+        this.serverError = 'Unexpected server error. Please try again later.';
       }
     }
   });

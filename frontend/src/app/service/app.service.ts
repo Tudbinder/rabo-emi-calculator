@@ -1,20 +1,8 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-
-export interface EmiRequest {
-  loanValue: number;
-  yearlyInterestRate: number;
-  loanTermYears: number;
-}
-
-export interface EmiResponse {
-  emi: number;
-  totalPayment: number;
-  totalInterest: number;
-  monthlyRate: number;
-  tenureMonths: number;
-}
+import { EmiRequest } from '../model/emi-request.model';
+import { EmiResponse } from '../model/emi-response.model';
 
 @Injectable({ providedIn: 'root' })
 export class EmiService {
